@@ -1,6 +1,7 @@
 package com.rawgvideogames.ui.games
 
 import androidx.compose.runtime.*
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rawgvideogames.domain.model.Game
@@ -14,20 +15,29 @@ import javax.inject.Inject
 
 @HiltViewModel
 class GamesViewModel @Inject constructor(
-    private val gamesUseCase: GetGamesUseCase
+    private val gamesUseCase: GetGamesUseCase,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     var gamesState by mutableStateOf(GamesState())
         private set
 
-    //var calls = mutableStateOf(0)
     private var currentScrollPosition = 0
-    init {
+
+    init
+    {
+        val restoredQuery = savedStateHandle.get<String>(Constants.SEARCH_QUERY)
+        if(restoredQuery?.isNotEmpty() == true) {
+            gamesState = gamesState.copy(query = restoredQuery )
+        }
         resetSearch()
+
+        //a proper caching strategy should handle restoring the search query results to their original position.
     }
 
-    //this is a new search
-    fun resetSearch() {
+    //new search
+    fun resetSearch()
+    {
         currentScrollPosition = 0
         gamesState = gamesState.copy(
             games = emptyList(),
@@ -39,8 +49,8 @@ class GamesViewModel @Inject constructor(
         getGames()
     }
 
-    fun getGames() {
-       // calls.value++
+    fun getGames()
+    {
         gamesUseCase(gamesState.query, gamesState.pageNumber.toString()).onEach { result ->
             when (result) {
                 is Resource.Success -> {
@@ -75,12 +85,15 @@ class GamesViewModel @Inject constructor(
         }
     }
 
-    fun updateQuery(newQuery: String) {
+    fun updateQuery(newQuery: String)
+    {
         gamesState = gamesState.copy(query = newQuery)
+        savedStateHandle.set(Constants.SEARCH_QUERY, newQuery)
     }
 
     fun updateCurrentScrollPosition(newPosition : Int)
     {
         currentScrollPosition = newPosition
+        savedStateHandle.set(Constants.SCROLL_POSITION, newPosition)
     }
 }
